@@ -4,7 +4,9 @@
 
 ;; part 1
 
-(defn part1 []
+(defn part1
+  "Sums up all lines of input file"
+  []
   (-> (slurp "./resources/day01/input.txt")
       (str/split #"\n")
       (->> (map #(Long/parseLong %))
@@ -13,9 +15,10 @@
 
 ;; part 2
 
-(defn first-repeat [coll]
-  ;; assuming the input sequence cycles back to a repeating value
-  ;; returns the first repeating value in a sequence
+(defn first-repeat
+  "Assuming the input sequence cycles back to a repeating value
+  returns the first repeating value in a sequence."
+  [coll]
   (loop [seen   #{} 
          coming coll]
     (if (seen (first coming))
@@ -23,7 +26,9 @@
       (recur (conj seen (first coming))
              (rest coming)))))
 
-(defn part2 []
+(defn part2
+  "Returns first repeating frequency"
+  []
   (-> (slurp "./resources/day01/input.txt")
       (str/split #"\n")
       (->> (map #(Long/parseLong %))
