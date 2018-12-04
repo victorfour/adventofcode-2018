@@ -55,7 +55,7 @@
                  true))
         (recur (rest claims)
                occupied?)))))
-
+(
 (defn read-claims
   [filename]
   (-> (slurp filename)
