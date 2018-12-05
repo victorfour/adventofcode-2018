@@ -97,7 +97,6 @@
 
 ;;; part 2
 
-
 (defn range-asleep-per-guard
   [x]
   [(:guard (first x)) (range-asleep x)])
@@ -110,25 +109,21 @@
         (map second)
         (flatten)
         (frequencies))])
-  
-(defn max-freq
-  [left right]
-  (reduce #(if (< (second %left) (second %right)) %right %left)))
-    
-(->> parsed-data
-     (group-by-shift)
-     (take 30)
-     (map range-asleep-per-guard)
-     (group-by first)
-     (map minute-frequencies)
-     (max-freq)
-     ;(reduce max-freq)
-     ;(map second)
-     ;(map interleave)
-     ;(map get-range)
-     (println)
-     ;(map #(:guard first %))
-     ;(map #({:guard (:guard (first %))}))
-             ;:range (range-asleep %)}))
-     )
+
+
+(defn max-freq [[id freqs]]
+  [id (reduce #(if (< (second %1) (second %2)) %2 %1) freqs)])
+
+
+(defn part2 []
+  (let [[id [minute freq]] (->> parsed-data
+                                (group-by-shift)
+                                (map range-asleep-per-guard)
+                                (group-by first)
+                                (map minute-frequencies)
+                                (map max-freq)
+                                (reduce #(if (< (second (second %1)) (second (second %2))) %2 %1)))]
+    (* id minute)))
+
+(part2) ;=>136461
 
