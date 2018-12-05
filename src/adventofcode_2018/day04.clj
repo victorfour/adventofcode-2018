@@ -91,7 +91,7 @@
         sleepiest-minute (get-sleepiest-minute sleepiest-guard)]
     (* sleepiest-minute sleepiest-guard))) 
     
-(part1) ;=>87681
+;;; (part1) ;=>87681
 
   
 
@@ -125,5 +125,5 @@
                                 (reduce #(if (< (second (second %1)) (second (second %2))) %2 %1)))]
     (* id minute)))
 
-(part2) ;=>136461
+;;; (part2) ;=>136461
 

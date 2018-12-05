@@ -41,8 +41,7 @@
        (count)
        (println)))
 
-(time (part1)) ;=>9288
-
+;;;(time (part1)) ;=>9288
 ;;; "Elapsed time: 33002.850072 msecs" :/
 
 
@@ -66,7 +65,6 @@
        (println)))
 
 
-(time (part2)) ;=>5844
-
+;;;(time (part2)) ;=>5844
 ;;; "Elapsed time: 440700.035086 msecs" :/
        

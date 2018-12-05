@@ -55,7 +55,7 @@
                  true))
         (recur (rest claims)
                occupied?)))))
-(
+
 (defn read-claims
   [filename]
   (-> (slurp filename)
@@ -69,7 +69,7 @@
          (filter true?)
          (count))))
 
-(time (part1)) ; =>112378
+;;; (time (part1)) ; =>112378
 ;;; "Elapsed time: 222476.748378 msecs" :/
 
 
@@ -135,8 +135,7 @@
   (let [claims (read-claims "./resources/day03/input.txt")]
     (->> claims
          (remove #(has-overlap? claims %))
-         (map print-claim)
-         )))
+         (apply :id))))
 
-(time (part2)) ;=>#603
-
+;;; (time (part2)) ;=>#603
+;;; "Elapsed time: 3707.204229 msecs"
