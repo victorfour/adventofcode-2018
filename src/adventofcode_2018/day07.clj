@@ -88,7 +88,7 @@
            next-graph (remove-node graph (first dep-free-nodes))]
        (recur next-graph (conj acc (first dep-free-nodes)))))))
 
-(time (println (part1 (parse-data "./resources/day07/input.txt"))))
+(time (println (part1 (parse-data "./resources/day07/example.txt"))))
 ;;;=>AEMNPOJWISZCDFUKBXQTHVLGRY
 ;;; "Elapsed time: 608.031696 msecs"
 
@@ -99,16 +99,17 @@
 (def data (parse-data "./resources/day07/input.txt"))
 
 
-(walk-graph example-data)
+;(take 5 (iterate (walk-graph example-data)))
+
 (def next-graph (remove-node example-data \C))
 
 (print next-graph)
 (walk-graph next-graph)
 
 
-(def num-workers 5)
-(def offset 0)
 
+(def num-workers 2)
+(def offset 0)
 
 (defn worker-available?
   [worker-pool]
@@ -130,57 +131,61 @@
 
 
 (defn get-next-tasks
-  [[worker-pool task-queue graph]]
+  [[graph worker-pool task-queue]]
   (let [new-tasks (walk-graph graph)
-        next-graph (remove-nodes graph new-tasks)
+        next-graph (remove-nodes graph new-tasks); don't do this
         next-task-queue (vec (concat (vec task-queue) new-tasks))]
-    [worker-pool next-task-queue next-graph]))
+    [next-graph worker-pool next-task-queue]))
 
 
 (defn add-task-to-pool
-  [[worker-pool task-queue graph]]
-  [(flatten (conj worker-pool (time-needed (first task-queue))))
-   (rest task-queue)
-   graph])
+  [[graph worker-pool task-queue]]
+  [graph
+   (vec (flatten (conj worker-pool (time-needed (first task-queue)))))
+   (rest task-queue)])
   
 
 (defn fill-worker-pool
-  [[worker-pool task-queue graph]]
-   (if (worker-available? worker-pool)
-     (if (empty? task-queue)
-       (recur (get-next-tasks [worker-pool task-queue graph]))
-       (recur (add-task-to-pool [worker-pool task-queue graph])))
-     [worker-pool task-queue graph]))
+  [[graph worker-pool task-queue]]
+  (if (worker-available? worker-pool)
+    (if (empty? task-queue)
+      (recur (get-next-tasks [graph worker-pool task-queue]))
+      (recur (add-task-to-pool [graph worker-pool task-queue])))
+    [graph worker-pool task-queue]))
 
-;; fn next-second : (graph, task-queue, worker-pool, elapsed-time) -> (all state)
-;; dec all values in worker pool
-;; remove all tasks that get to zero from worker-pool
-;; inc elapsed time
-;(defn next-second
-;  [pool queue graph elapsed-time]
-;  (let [next-pool (map #(
   
 (defn next-second
-  [pool queue graph elapsed-time]
-  [(remove #(= % 0) (map dec pool))
-   queue
-   graph
-   (inc elapsed-time)])
+  [graph pool queue elapsed-time]
+  (let [next-pool (remove #(= % 0) (mapv dec pool))
+        next-elapsed (inc elapsed-time)]
+    [graph next-pool queue next-elapsed]))
 
- 
+;  [graph
+;   (remove #(= % 0) (mapv dec pool))
+;   queue
+;   (inc elapsed-time)])
 
+
+;;; TODO : don't put a task in worker-pool if its dependencies are not met..
+;;; idea for fix: let `next-second` handle node removal
+;;; worker-pool should feature names of tasks 
 (defn timestep
-  ([graph worker-pool task-queue]
-   (timestep [graph worker-pool task-queue 0]))
-  ([[graph worker-pool task-queue elapsed-time]]
-   (if (and (empty? graph)
-            (empty? task-queue)
-            (empty? worker-pool))
-     elapsed-time
-     (if (worker-available? worker-pool)
-       (let [[next-pool next-queue next-graph] (fill-worker-pool [worker-pool task-queue graph])]
-         (recur (next-second next-pool next-queue next-graph elapsed-time)))
-       (recur (next-second worker-pool task-queue graph elapsed-time))))))
-  
-(timestep example-data [] [])
+  [[graph worker-pool task-queue elapsed-time]]
+  (println (str "graph:" graph "|empty?:" (empty? graph)))
+  (println (str "pool:" (seq worker-pool) "|empty?:" (empty? (seq worker-pool))))
+  (println (str "queue:" task-queue "|empty?:" (empty? task-queue)))
+  (println (str "elapsed:" elapsed-time))
+  (println "------------------------")
+  (if (and (empty? graph)
+           (empty? task-queue)
+           (empty? worker-pool))
+    elapsed-time
+    (if (worker-available? worker-pool)
+      (if (and (empty? task-queue) (empty? graph))
+        (recur (next-second graph worker-pool task-queue elapsed-time))
+        (let [[next-graph next-pool next-queue] (fill-worker-pool [graph worker-pool task-queue])]
+          (recur (next-second next-graph next-pool next-queue elapsed-time))))
+      (recur (next-second graph worker-pool task-queue elapsed-time)))))
 
+(println "------------------------")
+(timestep [example-data [] [] 0])
