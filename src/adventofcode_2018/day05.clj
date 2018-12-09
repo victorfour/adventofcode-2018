@@ -41,30 +41,30 @@
        (count)
        (println)))
 
-;;;(time (part1)) ;=>9288
+;;; (time (part1)) ;=>9288
 ;;; "Elapsed time: 33002.850072 msecs" :/
 
 
 
 ;;; part 2
 
-(def input (slurp "./resources/day05/input.txt"))
-
 (defn removed-unit
-  [x]
+  [input x]
   (let [c (Character/toLowerCase x)
         C (Character/toUpperCase x)]
-    (->> input ; sorry about that
+    (->> input
          (remove #(= c %))
          (remove #(= C %)))))
 
-(defn part2 []
-  (->> "abcdefghijklmnopqrstuvwxyz"
-       (pmap #(count (str/trim (apply str (react (removed-unit %))))))
-       (apply min)
-       (println)))
+(defn part2
+  [input]
+  (let [pre-removed-unit (partial removed-unit input)]
+    (->> "abcdefghijklmnopqrstuvwxyz"
+         (pmap #(count (str/trim (apply str (react (pre-removed-unit %))))))
+         (apply min)
+         (println))))
 
 
-;;;(time (part2)) ;=>5844
+(time (part2 (slurp "./resources/day05/input.txt"))) ;=>5844
 ;;; "Elapsed time: 440700.035086 msecs" :/
        
