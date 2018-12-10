@@ -32,3 +32,51 @@
 
 (println (part1 (parse-data inputtxt)))
 ;;=>[() 47112]
+
+
+;;; part 2
+
+
+(defn -build-tree
+  [input]
+  (let [num-children (first input)
+        num-elems (second input)
+        tail (drop 2 input)]
+    (loop [n-child num-children
+           cur-input tail
+           acc []]
+      (if (zero? n-child)
+        [(drop num-elems cur-input) (vec (concat acc (vec (take num-elems cur-input))))]
+        (let [[next-input next-acc] (-build-tree cur-input)]
+          (recur (dec n-child)
+                 next-input
+                 (conj acc next-acc)))))))
+
+
+(defn build-tree
+  [input]
+  (second (-build-tree (parse-data input))))
+
+
+(defn is-leaf?
+  [node]
+  (not (some sequential? node)))
+
+
+(defn get-node-value
+  [node]
+  (if (is-leaf? node)
+    (apply + node)
+    (let [children (filter sequential? node)
+          metadata (remove sequential? node)]
+      (some->> metadata
+               (map dec)
+               (map #(nth children % nil))
+               (map get-node-value)
+               (flatten)
+               (apply +)))))
+               
+
+(println (get-node-value (build-tree inputtxt)))
+
+
