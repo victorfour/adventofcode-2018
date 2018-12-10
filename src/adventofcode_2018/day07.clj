@@ -89,38 +89,44 @@
        (recur next-graph (conj acc (first dep-free-nodes)))))))
 
 (time (println (part1 (parse-data "./resources/day07/example.txt"))))
+;;;(time (println (part1 (parse-data "./resources/day07/input.txt"))))
 ;;;=>AEMNPOJWISZCDFUKBXQTHVLGRY
 ;;; "Elapsed time: 608.031696 msecs"
 
 
 ;;; part 2
+(def offset 0)
 
 (def example-data (parse-data "./resources/day07/example.txt"))
 (def data (parse-data "./resources/day07/input.txt"))
 
-
-;(take 5 (iterate (walk-graph example-data)))
-
 (def next-graph (remove-node example-data \C))
 
-(print next-graph)
-(walk-graph next-graph)
+;(print example-data)
+;(print next-graph)
+;(walk-graph next-graph)
 
 
+(defn init-state
+  [input-file offset num-workers]
+  {:graph (parse-data input-file)
+   :todo '(\A \B \C)
+   :workers '() 
+   :elapsed-time 0
+   :offset offset
+   :num-workers num-workers})
 
-(def num-workers 2)
-(def offset 0)
+(def example-state (init-state "./resources/day07/example.txt" 0 2))
 
-(defn worker-available?
-  [worker-pool]
-  (not= (count worker-pool) num-workers))
+(println example-state)
 
 
 (defn time-needed
   [task]
-  (println (str "time needed:" task))
+  ;(println (str "time needed:" task))
   (+ offset (inc (- (int task) (int \A)))))
 
+;(time-needed \D)
 
 (defn remove-nodes
   [graph nodes]
@@ -129,63 +135,85 @@
     (recur (remove-node graph (first nodes))
            (rest nodes))))
 
-
-(defn get-next-tasks
-  [[graph worker-pool task-queue]]
-  (let [new-tasks (walk-graph graph)
-        next-graph (remove-nodes graph new-tasks); don't do this
-        next-task-queue (vec (concat (vec task-queue) new-tasks))]
-    [next-graph worker-pool next-task-queue]))
+;(remove-nodes example-data [\C])
+;(remove-nodes example-data [\C \A])
+;(remove-nodes example-data [\C \A \B \D \F])
+;(remove-nodes example-data [\C \A \B \D \F \E])
 
 
-(defn add-task-to-pool
-  [[graph worker-pool task-queue]]
-  [graph
-   (vec (flatten (conj worker-pool (time-needed (first task-queue)))))
-   (rest task-queue)])
-  
+(defn worker-available?
+  [{:keys [workers num-workers] :as state}]
+  (if (< (count workers) num-workers)
+    true
+    false))
 
-(defn fill-worker-pool
-  [[graph worker-pool task-queue]]
-  (if (worker-available? worker-pool)
-    (if (empty? task-queue)
-      (recur (get-next-tasks [graph worker-pool task-queue]))
-      (recur (add-task-to-pool [graph worker-pool task-queue])))
-    [graph worker-pool task-queue]))
 
-  
+(defn task-available?
+  [{:keys [todo] :as state}]
+  (if (< (count todo) 0)
+    true
+    false))
+
+
+(defn next-task
+  [todo]
+  [(first todo) (time-needed (first todo))])
+
+
+(defn assign-tasks-to-wokers
+  [{:keys [todo] :as state}]
+  (if (or (zero? (count todo))
+          (not (worker-available? state)))
+    state
+    (recur (-> state
+               (update :workers conj (next-task todo))
+               (update :todo rest)))))
+
+;(assign-tasks-to-wokers example-state)
+
+(defn remove-done
+  [{:keys [graph todo workers] :as state}]
+  (let [done (filter #(zero? (second %)) todo)]
+    (-> state
+        (update :graph remove-nodes done)
+        (update :todo (partial remove #(zero? (second %)))))))
+
+
+(defn update-todo
+  [{:keys [graph todo workers] :as state}]
+  (update state :todo #(sort (concat (walk-graph graph) %))))
+
+
+
 (defn next-second
-  [graph pool queue elapsed-time]
-  (let [next-pool (remove #(= % 0) (mapv dec pool))
-        next-elapsed (inc elapsed-time)]
-    [graph next-pool queue next-elapsed]))
+  [{:keys [graph todo workers] :as state}]
+  (-> state
+      (remove-done)
+      (update-todo)
+      (update :elapsed-time inc)))
 
-;  [graph
-;   (remove #(= % 0) (mapv dec pool))
-;   queue
-;   (inc elapsed-time)])
+;;; TODO
+(defn assign-tasks-to-wokers
+  [{:keys [graph todo workers] :as state}]
+ ) 
+  
+  
 
-
-;;; TODO : don't put a task in worker-pool if its dependencies are not met..
-;;; idea for fix: let `next-second` handle node removal
-;;; worker-pool should feature names of tasks 
-(defn timestep
-  [[graph worker-pool task-queue elapsed-time]]
-  (println (str "graph:" graph "|empty?:" (empty? graph)))
-  (println (str "pool:" (seq worker-pool) "|empty?:" (empty? (seq worker-pool))))
-  (println (str "queue:" task-queue "|empty?:" (empty? task-queue)))
-  (println (str "elapsed:" elapsed-time))
-  (println "------------------------")
+(defn part2 
+  [{:keys [graph todo workers elapsed-time] :as state}]
   (if (and (empty? graph)
-           (empty? task-queue)
-           (empty? worker-pool))
+           (empty? todo)
+           (empty? workers))
     elapsed-time
-    (if (worker-available? worker-pool)
-      (if (and (empty? task-queue) (empty? graph))
-        (recur (next-second graph worker-pool task-queue elapsed-time))
-        (let [[next-graph next-pool next-queue] (fill-worker-pool [graph worker-pool task-queue])]
-          (recur (next-second next-graph next-pool next-queue elapsed-time))))
-      (recur (next-second graph worker-pool task-queue elapsed-time)))))
+    (if (and (worker-available? state)
+             (task-available? state))
+      (recur (next-second (assign-tasks-to-workers state)))
+      (recur (next-second state)))))
+  
 
-(println "------------------------")
-(timestep [example-data [] [] 0])
+;(timestep initial-state)
+
+
+
+
+
