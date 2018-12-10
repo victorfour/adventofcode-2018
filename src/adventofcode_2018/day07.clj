@@ -110,7 +110,7 @@
 (defn init-state
   [input-file offset num-workers]
   {:graph (parse-data input-file)
-   :todo '(\A \B \C)
+   :todo '()
    :workers '() 
    :elapsed-time 0
    :offset offset
@@ -160,7 +160,7 @@
   [(first todo) (time-needed (first todo))])
 
 
-(defn assign-tasks-to-wokers
+(defn assign-tasks-to-workers
   [{:keys [todo] :as state}]
   (if (or (zero? (count todo))
           (not (worker-available? state)))
@@ -192,11 +192,6 @@
       (update-todo)
       (update :elapsed-time inc)))
 
-;;; TODO
-(defn assign-tasks-to-wokers
-  [{:keys [graph todo workers] :as state}]
- ) 
-  
   
 
 (defn part2 
@@ -210,8 +205,10 @@
       (recur (next-second (assign-tasks-to-workers state)))
       (recur (next-second state)))))
   
+(println example-state)
 
-;(timestep initial-state)
+;(def example-state (init-state "./resources/day07/example.txt" 0 2))
+(part2 (init-state "./resources/day07/example.txt" 0 2))
 
 
 
