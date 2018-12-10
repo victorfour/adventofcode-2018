@@ -95,17 +95,6 @@
 
 
 ;;; part 2
-(def offset 0)
-
-(def example-data (parse-data "./resources/day07/example.txt"))
-(def data (parse-data "./resources/day07/input.txt"))
-
-(def next-graph (remove-node example-data \C))
-
-;(print example-data)
-;(print next-graph)
-;(walk-graph next-graph)
-
 
 (defn init-state
   [input-file offset num-workers]
@@ -116,17 +105,11 @@
    :offset offset
    :num-workers num-workers})
 
-(def example-state (init-state "./resources/day07/example.txt" 0 2))
-
-(println example-state)
-
 
 (defn time-needed
-  [task]
-  ;(println (str "time needed:" task))
+  [task offset]
   (+ offset (inc (- (int task) (int \A)))))
 
-;(time-needed \D)
 
 (defn remove-nodes
   [graph nodes]
@@ -134,11 +117,6 @@
     graph
     (recur (remove-node graph (first nodes))
            (rest nodes))))
-
-;(remove-nodes example-data [\C])
-;(remove-nodes example-data [\C \A])
-;(remove-nodes example-data [\C \A \B \D \F])
-;(remove-nodes example-data [\C \A \B \D \F \E])
 
 
 (defn worker-available?
@@ -149,50 +127,58 @@
 
 
 (defn task-available?
-  [{:keys [todo] :as state}]
-  (if (< (count todo) 0)
+  [{:keys [graph workers todo] :as state}]
+  (if (< 0 (count todo))
     true
     false))
 
 
 (defn next-task
-  [todo]
-  [(first todo) (time-needed (first todo))])
+  [todo offset]
+  (let [sorted-todo (sort todo)]
+    [(first sorted-todo) (time-needed (first sorted-todo) offset)]))
 
 
 (defn assign-tasks-to-workers
-  [{:keys [todo] :as state}]
+  [{:keys [todo offset] :as state}]
   (if (or (zero? (count todo))
           (not (worker-available? state)))
     state
     (recur (-> state
-               (update :workers conj (next-task todo))
+               (update :workers #(conj % (next-task todo offset)))
                (update :todo rest)))))
 
-;(assign-tasks-to-wokers example-state)
 
 (defn remove-done
-  [{:keys [graph todo workers] :as state}]
-  (let [done (filter #(zero? (second %)) todo)]
+  [{:keys [graph workers] :as state}]
+  (let [done? #(zero? (second %))
+        done (map first (filter done? workers))]
     (-> state
-        (update :graph remove-nodes done)
-        (update :todo (partial remove #(zero? (second %)))))))
+        (update :graph #(remove-nodes % done))
+        (update :workers (partial remove done?)))))
 
 
 (defn update-todo
-  [{:keys [graph todo workers] :as state}]
-  (update state :todo #(sort (concat (walk-graph graph) %))))
+  [{:keys [graph workers] :as state}]
+  (let [available-tasks (set (walk-graph graph))
+        doing (set (map first workers))
+        new-tasks (vec (clojure.set/difference available-tasks doing))]
+    (update state :todo #(distinct (concat % new-tasks)))))
 
+
+(defn update-workers
+  [{:keys [graph todo workers] :as state}]
+  (let [update-one (fn [x] [(first x) (dec (second x))])]
+    (update state :workers #(map update-one %))))
 
 
 (defn next-second
   [{:keys [graph todo workers] :as state}]
   (-> state
+      (update-workers)
       (remove-done)
-      (update-todo)
       (update :elapsed-time inc)))
 
-  
 
 (defn part2 
   [{:keys [graph todo workers elapsed-time] :as state}]
@@ -200,17 +186,15 @@
            (empty? todo)
            (empty? workers))
     elapsed-time
-    (if (and (worker-available? state)
-             (task-available? state))
-      (recur (next-second (assign-tasks-to-workers state)))
-      (recur (next-second state)))))
+    (let [state (update-todo state)]
+      (if (and (worker-available? state)
+               (task-available? state))
+        (recur (next-second (assign-tasks-to-workers state)))
+        (recur (next-second state))))))
   
-(println example-state)
+(time (part2 (init-state "./resources/day07/input.txt" 60 5)))
 
-;(def example-state (init-state "./resources/day07/example.txt" 0 2))
-(part2 (init-state "./resources/day07/example.txt" 0 2))
-
-
-
+;;;=>1081
+;;;"Elapsed time: 17267.733962 msecs" sorry about that
 
 
