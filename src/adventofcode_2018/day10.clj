@@ -92,3 +92,26 @@
 ;;;"Elapsed time: 5846.092981 msecs"
 
 ;;; part2
+
+(defn part2
+  [input]
+  (let [[positions velocities] (parse-data input)
+        step (partial next-second velocities)
+        initial-range (get-range positions)]
+    (loop [elapsed-seconds 0
+           current-positions positions
+           current-range initial-range]
+      (let [next-positions (step current-positions)
+            next-range (get-range next-positions)]
+        (if (> (apply * next-range) (apply * current-range))
+          (do
+            (println (str "elapsed-seconds: " elapsed-seconds))
+            (display current-positions))
+          (recur (inc elapsed-seconds)
+                 next-positions
+                 next-range))))))
+
+
+(part2 "./resources/day10/input.txt")
+
+
