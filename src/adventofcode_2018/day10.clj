@@ -34,8 +34,8 @@
   [velocities positions]
   (m/add positions velocities))
 
-(def on 1)
-(def off 0)
+(def on \#)
+(def off \.)
 
 (defn fill-grid
   [positions]
@@ -59,6 +59,19 @@
           (recur (rest points)))))))
 
 
+(defn get-range
+  [positions]
+  (let [
+        y-max (apply max (second positions))
+        y-min (apply min (second positions))
+        x-max (apply max (first positions))
+        x-min (apply min (first positions))
+        x-range (inc (- x-max x-min))
+        y-range (inc (- y-max y-min))]
+    [x-range y-range]
+    ))
+
+
 (defn display
   [positions]
   (let [grid (fill-grid positions)
@@ -70,5 +83,23 @@
 (time (let [[positions velocities] (parse-data "./resources/day10/example.txt")
       step (partial next-second velocities)]
   (println (display (last (take 4 (iterate step positions)))))))
+
+(defn part1
+  [input]
+  (let [[positions velocities] (parse-data input)
+        step (partial next-second velocities)
+        initial-range (get-range positions)]
+    (loop [current-positions positions
+           current-range initial-range]
+      (let [next-positions (step current-positions)
+            next-range (get-range next-positions)]
+        (if (> (apply * next-range) (apply * current-range))
+          (display current-positions)
+          (recur next-positions
+                 next-range))))))
+
+(part1 "./resources/day10/input.txt")
+      
+
   
 
