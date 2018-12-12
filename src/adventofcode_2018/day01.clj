@@ -6,12 +6,14 @@
 
 (defn part1
   "Sums up all lines of input file"
-  []
-  (-> (slurp "./resources/day01/input.txt")
+  [input]
+  (-> (slurp input)
       (str/split #"\n")
       (->> (map #(Long/parseLong %))
            (reduce +))))
 
+(part1 "./resources/day01/input.txt")
+;;;=> 547
 
 ;; part 2
 
@@ -28,10 +30,13 @@
 
 (defn part2
   "Returns first repeating frequency"
-  []
-  (-> (slurp "./resources/day01/input.txt")
+  [input]
+  (-> (slurp input)
       (str/split #"\n")
       (->> (map #(Long/parseLong %))
            (cycle)
            (reductions + 0)
            (first-repeat))))
+
+(part2 "./resources/day01/input.txt")
+;;;=> 76414
