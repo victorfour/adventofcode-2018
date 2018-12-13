@@ -14,7 +14,6 @@
 ;;                         top-right (299, 0)
 
 
-
 (defn hundreds
   [n]
   (-> (nth (reverse (str n)) 2 \0)
@@ -96,4 +95,54 @@
 ;;;"Elapsed time: 4536.392848 msecs"
 
 
+;;; part2
 
+(defn conv-filter-size
+  [grid filter-size [x y]]
+  (let [line-conv (fn [y-line]
+                    (reduce + (take filter-size (drop x (nth grid y-line)))))]
+    (->> (range y (+ y filter-size))
+         (map line-conv)
+         (reduce +))))
+
+
+(defn conv-grid-filter-size
+  [grid filter-size]
+  (let [width (- (count (first grid)) (dec filter-size))
+        height (- (count grid) (dec filter-size))
+        conv-filter (partial conv-filter-size grid filter-size)]
+    (for [y (range height)
+          x (range width)]
+      (conv-filter [x y]))))
+
+
+(defn conv-filter
+  [serial-number filter-size]
+  (let [width 300
+        height 300
+        conv-width (- width (dec filter-size))
+        conv-height (- height (dec filter-size))
+        conved-grid (conv-grid-filter-size (compute-grid width height serial-number) filter-size)
+        index-max-conved (argmax conved-grid)
+        max-value (apply max conved-grid)
+        x-max (mod index-max-conved conv-width)
+        y-max (/ (- index-max-conved x-max) conv-width)]
+    [filter-size max-value x-max y-max]))
+
+
+(time (println (conv-filter 8868 3)))
+
+(defn part2
+  [serial-number]
+  (let [apply-conv (partial conv-filter serial-number)]
+    (->> (for [filter-size (range 1 301)]
+           filter-size)
+         (pmap apply-conv)
+         (apply max-key second))))
+
+
+(time (println (part2 8868)))
+
+;;;=>[12 71 166 75]
+;;;answer: 166,75,12
+;;;"Elapsed time: 6567538.537361 msecs" :/
