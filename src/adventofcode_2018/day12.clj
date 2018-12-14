@@ -13,7 +13,7 @@
 
 (defn parse-data
   [filename]
-  (let [;filename "./resources/day12/input.txt"
+  (let [
         input (-> (slurp filename)
                   (str/split #"\n"))
         initial-state (first (rest (re-find #"initial state: (.+)" (first input))))
@@ -33,8 +33,9 @@
 
 
 (defn next-state
-  [rules state]
-  (let [new-line (apply str (concat "..." state "..."))]
+  [rule-data state]
+  (let [rules (partial apply-rules rule-data)
+        new-line (apply str (concat "..." state "..."))]
     (loop [line new-line
            next-line []]
       (let [pattern (apply str (take 5 line))]
@@ -62,10 +63,11 @@
         initial-count (count initial-state)]
     (loop [epoch 0
            state initial-state]
+      (println state)
       (if (= epoch final-epoch)
         state 
         (recur (inc epoch)
-               (step-epoch (take (+ (* 2 epoch) initial-count) state)))))))
+               (step-epoch state))))))
 
 (defn part1
   [input epoch]
@@ -77,10 +79,40 @@
 
 
 ;;; part 2
-    
-(time (println (part1 "./resources/day12/input.txt" 5000)))
-;;;400866
-;;;"Elapsed time: 46601.037461 msecs" ...
 
-(time (println (part1 "./resources/day12/input.txt" 5000000000)));; DNF...
+(defn rtrim-empty
+  [input]
+  (loop [line input
+         num-empty 0]
+    (if (= \. (first line))
+      (recur (rest line)
+             (inc num-empty))
+      [num-empty (apply str line)])))
+
+(defn already-seen
+  [history state]
+  (if (= (count history) 20)
+    true
+    false))
+
+(defn find-repeating-pattern
+  [input final-epoch]
+  (let [[initial-state rules] (parse-data input)
+        step-epoch (partial next-state rules)
+        initial-count (count initial-state)]
+    (loop [history []
+           state initial-state]
+      (if (already-seen history state)
+        (conj history (rtrim-empty state))
+        (recur (conj history (rtrim-empty state))
+               (step-epoch state))))))
+    
+(time (pp/pprint (find-repeating-pattern "./resources/day12/input.txt" 5)))
+
+
+;(time (println (part1 "./resources/day12/input.txt" 5000)))
+;;;400866
+;;;"Elapsed time: 46601.037461 msecs" ..
+
+;(time (println (part1 "./resources/day12/input.txt" 5000000000)));; DNF...
 
