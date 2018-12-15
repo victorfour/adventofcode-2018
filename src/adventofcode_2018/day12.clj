@@ -62,25 +62,28 @@
         step-epoch (partial next-state rules)
         initial-count (count initial-state)]
     (loop [epoch 0
+           acc []
            state initial-state]
-      (println state)
+      ;(println state)
       (if (= epoch final-epoch)
-        state 
+        acc 
         (recur (inc epoch)
+               (conj acc state)
                (step-epoch state))))))
 
 (defn part1
   [input epoch]
   (count-plants (simulate-epoch input epoch) epoch))
 
-(time (println (part1 "./resources/day12/input.txt" 20)))
+(time (def thing (part1 "./resources/day12/input.txt" 96)))
+
 ;;;3217
 ;;;"Elapsed time: 5.447573 msecs"
 
 
 ;;; part 2
 
-(defn rtrim-empty
+(defn trim-left
   [input]
   (loop [line input
          num-empty 0]
@@ -89,30 +92,80 @@
              (inc num-empty))
       [num-empty (apply str line)])))
 
+
+(defn trim-right
+  [input]
+  (loop [line input
+         num-empty 0]
+    (if (= \. (last line))
+      (recur (drop-last line)
+             (inc num-empty))
+      [num-empty (apply str line)])))
+
+
+(defn trim-empty
+  [input]
+  (let [ltrim (trim-left input)
+        rtrim (trim-right (second ltrim))]
+    [[(first ltrim) (first rtrim)] (second rtrim)]))
+
+
+
 (defn already-seen
-  [history state]
-  (if (= (count history) 20)
+  [history trimmed-state]
+  (if ((:test-set history) (second trimmed-state))
     true
     false))
 
+
+(defn update-history
+  [history trimmed-state]
+  (-> history
+      (update :data #(conj % trimmed-state))
+      (update :test-set #(conj % (second trimmed-state)))))
+
+
 (defn find-repeating-pattern
-  [input final-epoch]
+  [input]
   (let [[initial-state rules] (parse-data input)
         step-epoch (partial next-state rules)
         initial-count (count initial-state)]
-    (loop [history []
+    (loop [history {:test-set #{} :data []}
            state initial-state]
-      (if (already-seen history state)
-        (conj history (rtrim-empty state))
-        (recur (conj history (rtrim-empty state))
-               (step-epoch state))))))
+      (let [trimmed-state (trim-empty state)]
+        (if (already-seen history trimmed-state)
+          (update-history history trimmed-state)
+          (recur (update-history history trimmed-state)
+                 (step-epoch state)))))))
     
-(time (pp/pprint (find-repeating-pattern "./resources/day12/input.txt" 5)))
+
+(time (def example-history (find-repeating-pattern "./resources/day12/input.txt")))
+
+(print (count (:data example-history)))
+
+(pp/pprint example-history)
+(pp/pprint (last (:data example-history)))
+(def query (second (last (:data example-history))))
+
+(println query)
 
 
-;(time (println (part1 "./resources/day12/input.txt" 5000)))
-;;;400866
-;;;"Elapsed time: 46601.037461 msecs" ..
+(def history-data (:data example-history))
 
-;(time (println (part1 "./resources/day12/input.txt" 5000000000)));; DNF...
+(println history-data)
+(filter #(= query (second %)) history-data)
 
+(println (count history-data))
+(println history-data)
+
+(def thing (simulate-epoch "./resources/day12/input.txt" 96))
+
+(count-plants (nth thing 94) 94)
+(println (last thing))
+
+(println (second (trim-empty (last thing))))
+(println (second (trim-empty (last (drop-last thing)))))
+(= (second (trim-empty (last (drop-last thing)))) (second (trim-empty (last thing))))
+
+(println (+ 8386 (* 80 (- 50000000000 94))))
+;;; 4000000000866... Thank you repl.
