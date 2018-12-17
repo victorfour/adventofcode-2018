@@ -4,21 +4,16 @@
 
 ;;; part 1
 
-(defn same-letter?
-  [a b]
-  (= (Character/toLowerCase b) (Character/toLowerCase a)))
-
 
 (defn inverted-polarity?
-  [a b]
-  (if (or (nil? a) (nil? b))
+  [char-a char-b]
+  (if (or (nil? char-a) (nil? char-b))
     false
-    (and (same-letter? a b)
-         (or (and (Character/isLowerCase a)
-                  (Character/isUpperCase b))
-             (and (Character/isLowerCase b)
-                  (Character/isUpperCase a))))))
-
+      (let [case-diff (- (int \a) (int \A))
+            a (int char-a)
+            b (int char-b)]
+        (or (= (- a b) case-diff)
+            (= (- b a) case-diff)))))
 
 (defn react
   [input]
@@ -26,24 +21,24 @@
          polymer (rest input)]
     (if (empty? polymer)
       done
-      (if (inverted-polarity? (last done) (first polymer))
-        (recur (vec (drop-last done))
+      (if (inverted-polarity? (peek done) (first polymer))
+        (recur (pop done)
                (rest polymer))
-        (recur (vec (conj done (first polymer)))
+        (recur (conj done (first polymer))
                (rest polymer))))))
 
 (defn part1
   []
   (->> (slurp "./resources/day05/input.txt")
        (react)
-       (apply str)
+       (str/join)
        (str/trim)
        (count)
        (println)))
 
-;;; (time (part1)) ;=>9288
-;;; "Elapsed time: 33002.850072 msecs" :/
-
+(time (part1)) ;=>9288
+;;;"Elapsed time: 19.177845 msecs"
+;;;old version: "Elapsed time: 33002.850072 msecs" :/
 
 
 ;;; part 2
@@ -66,5 +61,6 @@
 
 
 (time (part2 (slurp "./resources/day05/input.txt"))) ;=>5844
-;;; "Elapsed time: 440700.035086 msecs" :/
+;;;"Elapsed time: 353.650712 msecs"
+;;;old version: "Elapsed time: 440700.035086 msecs" :/
        
