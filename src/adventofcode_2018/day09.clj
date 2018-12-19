@@ -5,93 +5,83 @@
 
 ;;; part 1
 
+
+(defn rotate
+  [^java.util.ArrayDeque d n]
+  (let [clockwise #(.addLast d (.removeFirst d))
+        counter-clockwise #(.addFirst d (.removeLast d))]
+    (if (> n 0)
+      (repeatedly n clockwise)
+      (repeatedly (- n) counter-clockwise))))
+
+
 (defn init-state
   [num-players]
   {:num-marbles 1
    :num-players num-players
-   :circle [0]
-   :current-marble-pos 0
-   :current-marble-val 1 
+   :circle (java.util.ArrayDeque. [0])
    :current-player 0
+   :current-marble-val 1
    :scores (vec (repeat num-players 0))})
 
 
-(defn next-pos
-  [{:keys [current-marble-pos num-marbles] :as state}]
-  (let [pos (mod (+ current-marble-pos 2) num-marbles)]
-    (if (zero? pos)
-      num-marbles
-      pos)))
-
-
-(let [circle '(1 2 3 4 5)
-      [head tail] (split-at 2 circle)]
-  (println head)
-  (println tail)
-  (println (flatten (conj tail 42 head)))
-  )
-      
-
 (defn place-marble
-  [{:keys [scores circle current-player current-marble-pos current-marble-val num-players num-marbles] :as state}]
-  (let [new-marble-val (inc current-marble-val)
-        pos (next-pos state)
-        [head tail] (split-at pos circle)
-        new-circle (apply conj tail current-marble-val (reverse head))
-        ]
+  [{:keys [circle current-player num-players current-marble-val] :as state}]
+  (doall (rotate circle 2))
+  (doall (.addFirst circle current-marble-val))
     (-> state
-        (assoc :num-marbles (inc num-marbles))
-        (assoc :current-marble-val (inc current-marble-val))
-        (assoc :current-player (mod (inc current-player) num-players))
-
-        (assoc :circle new-circle)
-        (assoc :current-marble-pos pos)
-        )))
+        (update :current-marble-val inc)
+        (update :current-player #(mod (inc %) num-players))))
 
 
 (defn remove-marble
-  [{:keys [scores circle num-players current-player num-marbles current-marble-pos current-marble-val] :as state}]
-  (let [new-marble-val (inc current-marble-val)
-        to-remove-pos (mod (- current-marble-pos 7) num-marbles)
-        new-current-marble-pos (mod to-remove-pos (dec num-marbles))
-        points  (+ (nth scores current-player) (nth circle to-remove-pos) current-marble-val)
-        [head tail] (split-at to-remove-pos circle)
-        new-circle (concat head (rest tail))
+  [{:keys [scores circle num-players current-player current-marble-val] :as state}]
+  (doall (rotate circle -7))
+  (let [removed-marble (.removeFirst circle)
+        points  (+ (nth scores current-player) removed-marble current-marble-val)
         new-current-player (mod (inc current-player) num-players)
         new-scores (assoc scores current-player points)]
     (-> state
-        (assoc :num-marbles (dec num-marbles))
-        (assoc :circle new-circle)
-        (assoc :current-marble-val new-marble-val)
-        (assoc :current-marble-pos new-current-marble-pos)
-        (assoc :current-player new-current-player)
+        (update :current-marble-val inc)
+        (update :current-player #(mod (inc %) num-players))
         (assoc :scores new-scores))))
 
 
 (defn game-step
   [{:keys [current-marble-val] :as state}]
-  (if (and (> current-marble-val 0)
-           (zero? (mod current-marble-val 23)))
+  (if (zero? (mod current-marble-val 23))
     (remove-marble state)
     (place-marble state)))
 
 
 (defn part1
   [num-players last-marble]
-  (apply max (:scores (last (take (inc last-marble) (iterate game-step (init-state num-players)))))))
-    
+  (->> (init-state num-players)
+       (iterate game-step)
+       (take (inc last-marble))
+       (last)
+       (:scores)
+       (apply max)))
 
-(time (part1 9 25))
-(time (part1 10 1618))
-(time (part1 13 7999))
-(time (part1 17 1104))
-(time (part1 21 6111))
-(time (part1 30 5807))
+
+(time (println (part1 9 25)))
+(time (println (part1 10 1618)))
+(time (println (part1 13 7999)))
+(time (println (part1 17 1104)))
+(time (println (part1 21 6111)))
+(time (println (part1 30 5807)))
 (time (println (part1 452 71250)))
 ;;;=>388844
-;;;"Elapsed time: 383323.694446 msecs"
+;;;"Elapsed time: 402.500885 msecs"
+;;;old version: "Elapsed time: 383323.694446 msecs"
 
-;;; part2 is (part1 452 7125000), but that's gonna take > 6 hours with this code...
 
-  
-  
+;;; part 2
+
+(defn part2 []
+  (part1 452 7125000))
+
+(time (println (part2)))
+;;;=>3212081616
+;;;"Elapsed time: 45843.085438 msecs"
+
