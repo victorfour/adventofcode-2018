@@ -61,7 +61,6 @@ def torch_part1(puzzle_input):
 
 def cv_blur(grid, filter_size = 3):
     return cv2.boxFilter(grid, ddepth=-1, ksize=(filter_size, filter_size), anchor=(0,0), normalize=False, borderType = cv2.BORDER_ISOLATED)
-    return blurred
 
 def cv_part1(puzzle_input):
     return argmax_grid(cv_blur(compute_grid(puzzle_input)))
