@@ -92,6 +92,7 @@
 (defn print-state
   [state]
   (let [new-state (put-carts-on-track state)]
+    (println (str "carts(" (count (:carts state)) "):\n" (:carts state)))
     (loop [s new-state]
       (when (seq s)
         (do
@@ -115,7 +116,8 @@
 
 (defn move-cart
   [cart]
-  (assoc cart :position (m/add (:position cart) (get-direction (:char cart)))))
+  (when cart
+    (assoc cart :position (m/add (:position cart) (get-direction (:char cart))))))
 
 
 (defn rotate-cart
@@ -149,7 +151,6 @@
     \\ (turn-back cart)
     \/ (turn-forward cart)
     cart))
-
 
 (defn step
   [{:keys [carts track] :as state}]
@@ -186,37 +187,37 @@
 
 ;;; part2
 
-(defn remove-collided
-  [{:keys [carts] :as state}]
-  (if-let [location (find-collision state)]
-    (loop [iter-carts carts
-           acc []]
-      (if (seq iter-carts)
-        (if (= location (:position (first iter-carts)))
-          (recur (rest iter-carts)
-                 acc)
-          (recur (rest iter-carts)
-                 (conj acc (first iter-carts))))
-        (remove-collided (assoc state :carts acc))))
-    state))
-  
+(defn remove-collisions
+  [moved-cart moved rest-to-move]
+  (when moved-cart
+    (let [next-moved (remove #(= (:position moved-cart) (:position %)) moved)
+          next-to-move (remove #(= (:position moved-cart) (:position %)) rest-to-move)]
+      (if (or (some #(= (:position moved-cart) (:position %)) moved)
+              (some #(= (:position moved-cart) (:position %)) rest-to-move))
+        [next-moved next-to-move]
+        [(conj next-moved moved-cart) next-to-move]))))
+
+
+(defn stepped-step
+  [{:keys [carts track] :as state}]
+  (loop [moved '()
+         to-move (sort-by :position carts)]
+    (let [moved-cart (move-cart (first to-move))
+          [next-moved next-to-move] (remove-collisions moved-cart moved (rest to-move))]
+      (if moved-cart
+        (recur next-moved next-to-move)
+        (assoc state :carts (mapv (partial update-directions track) moved))))))
+
 
 (defn part2
-  [filename max-step]
+  [filename]
   (let [initial-state (parse-data filename)]
-    (loop [state initial-state
-           i 0]
-      (when (< i max-step)
-        (print-state state)
-        (if (find-collision state)
-          (if (= 1 (count (:carts (remove-collided state))))
-            (reverse (:position (first (:carts state))))
-            (recur (step (remove-collided state))
-                   (inc i)))
-          (recur (step state)
-                 (inc i)))))))
+    (loop [state initial-state]
+      (if (= 1 (count (:carts state)))
+        (reverse (:position (first (:carts state))))
+        (recur (stepped-step state))))))
 
-;;TODO: move collision test into step function as carts can cross path otherwise
 
-;(time (println (part2 "./resources/day13/example2.txt" 10)))
-
+(time (println (part2 "./resources/day13/input.txt")))
+;;=>(16 99)
+;;"Elapsed time: 903.29368 msecs"
