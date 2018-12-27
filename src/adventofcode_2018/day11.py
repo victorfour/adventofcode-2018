@@ -67,6 +67,16 @@ def torch_sep_blur(grid, filter_size = 3):
     blurred = F.conv2d(blurx, filters, padding = 0, stride=(1,1)).transpose(2,3)
     return blurred.squeeze().long().numpy()
 
+@jit
+def torch_sep_blur_no_transpose(grid, filter_size = 3):
+    dim = grid.shape[1]
+    out_dim = dim - filter_size + 1
+    filterx = torch.ones(1,1,1,filter_size)
+    filtery = torch.ones(1,1,filter_size, 1)
+    blurx = F.conv2d(grid, filterx, padding = 0, stride=(1,1))
+    blurred = F.conv2d(blurx, filtery, padding = 0, stride=(1,1))
+    return blurred.squeeze().long().numpy()
+
 
 @jit
 def torch_blur(grid, filter_size = 3):
@@ -119,6 +129,8 @@ if "__main__" == __name__:
                        "transform": np_to_torch},
             "torch_sep": {"fun" : torch_sep_blur,
                           "transform": np_to_torch},
+            "torch_no_t": {"fun" : torch_sep_blur_no_transpose,
+                          "transform": np_to_torch},
             "opencv": {"fun" : cv_blur,
                        "transform": lambda x:x}}
 
@@ -131,6 +143,8 @@ if "__main__" == __name__:
     algs = {"np_sep": {"fun" : np_sep_blur,
                        "transform": lambda x:x},
             "torch_sep": {"fun" : torch_sep_blur,
+                          "transform": np_to_torch},
+            "torch_no_t": {"fun" : torch_sep_blur_no_transpose,
                           "transform": np_to_torch},
             "opencv": {"fun" : cv_blur,
                        "transform": lambda x:x}}
