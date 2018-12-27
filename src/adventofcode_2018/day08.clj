@@ -37,7 +37,7 @@
 ;;; part 2
 
 
-(defn -build-tree
+(defn rec-build-tree
   [input]
   (let [num-children (first input)
         num-elems (second input)
@@ -47,25 +47,19 @@
            acc []]
       (if (zero? n-child)
         [(drop num-elems cur-input) (vec (concat acc (vec (take num-elems cur-input))))]
-        (let [[next-input next-acc] (-build-tree cur-input)]
+        (let [[next-input next-acc] (rec-build-tree cur-input)]
           (recur (dec n-child)
                  next-input
                  (conj acc next-acc)))))))
 
-
 (defn build-tree
   [input]
-  (second (-build-tree (parse-data input))))
-
-
-(defn is-leaf?
-  [node]
-  (not (some sequential? node)))
+  (second (rec-build-tree input)))
 
 
 (defn get-node-value
   [node]
-  (if (is-leaf? node)
+  (if (not (some sequential? node))
     (apply + node)
     (let [children (filter sequential? node)
           metadata (remove sequential? node)]
@@ -77,6 +71,6 @@
                (apply +)))))
                
 
-(println (get-node-value (build-tree inputtxt)))
+(println (get-node-value (build-tree (parse-data inputtxt))))
 
 
