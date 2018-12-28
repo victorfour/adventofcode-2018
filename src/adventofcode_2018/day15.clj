@@ -97,3 +97,21 @@
 (get-in-lookup-benchmark 32 3000)
 ;;"Elapsed time: 11488.919592 msecs"
 
+
+(defn nth-lookup-benchmark
+  [size iterations]
+  (let [choices (for [x (repeatedly iterations #(rand-int size))
+                      y (repeatedly iterations #(rand-int size))]
+                  [x y])
+        matrix (range (* size size))]
+    (time (println (count (map #(nth matrix (apply * %)) choices))))))
+
+
+(nth-lookup-benchmark 32 100)
+;;"Elapsed time: 126.334824 msecs"
+(nth-lookup-benchmark 32 300)
+;;"Elapsed time: 832.037978 msecs"
+(nth-lookup-benchmark 32 1000)
+;;"Elapsed time: 5635.350586 msecs"
+(nth-lookup-benchmark 32 3000)
+;;""Elapsed time: 47801.094126 msecs"
