@@ -2,7 +2,7 @@
   (:require [clojure.string :as str]))
 
 
-
+;; part 1
 (defn init-state
   []
   {:recipes [3 7 1 0 1 0]
@@ -19,32 +19,27 @@
 
 (defn make
   [{:keys [recipes felf self] :as state}]
-  (let [frecipe (get recipes felf)
-        srecipe (get recipes self)
-        new-recipes (concat-recipes recipes (+ frecipe srecipe))
-        new-len (count new-recipes)
-        new-felf (mod (inc frecipe) new-len)
-        new-self (mod (inc srecipe) new-len)]
+  (let [fscore (get recipes felf)
+        sscore (get recipes self)
+        new-recipes (concat-recipes recipes (+ fscore sscore))
+        new-len (count new-recipes)]
     (-> state
         (assoc :recipes new-recipes)
-        (assoc :felf new-felf)
-        (assoc :self (if (= new-felf new-self)
-                       (mod (inc new-felf) new-len)
-                       new-self
-                       )))))
+        (assoc :felf (mod (+ felf (inc fscore)) new-len))
+        (assoc :self (mod (+ self (inc sscore)) new-len)))))
 
 
 (defn part1
-  [start-seq end]
+  [start-seq]
   (let [end-len (+ start-seq 10)]
-    (loop [state (init-state)
-           i 0]
-      (println state)
-      (when (< i end)
-        (if (> (count (get state :recipes)) end-len)
-          (subvec (:recipes state) start-seq end-len)
-          (recur (make state)
-                 (inc i)))))))
+    (loop [state (init-state)]
+      (if (> (count (get state :recipes)) end-len)
+        (str/join (map str (subvec (:recipes state) start-seq end-len)))
+        (recur (make state))))))
 
-(time (part1 236021 10))
-                 
+(time (println (part1 236021)))
+;;=>6297310862
+;;=>"Elapsed time: 482.717829 msecs"
+
+;;when using a string to store recipes : "Elapsed time: 7710.605768 msecs"
+
