@@ -200,13 +200,10 @@
 
 (defn stepped-step
   [{:keys [carts track] :as state}]
-  (loop [moved '()
-         to-move (sort-by :position carts)]
-    (let [moved-cart (move-cart (first to-move))
-          [next-moved next-to-move] (remove-collisions moved-cart moved (rest to-move))]
-      (if moved-cart
-        (recur next-moved next-to-move)
-        (assoc state :carts (mapv (partial update-directions track) moved))))))
+  (loop [[moved to-move] ['() (sort-by :position carts)]]
+    (if-let [moved-cart (move-cart (first to-move))]
+      (recur (remove-collisions moved-cart moved (rest to-move)))
+      (assoc state :carts (mapv (partial update-directions track) moved)))))
 
 
 (defn part2
