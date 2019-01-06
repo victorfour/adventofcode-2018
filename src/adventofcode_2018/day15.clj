@@ -4,117 +4,6 @@
             [clojure.core.matrix.random :as mrand]))
 
 
-;;; what's the size of the problem?
-
-(-> (slurp "./resources/day15/input.txt")
-    (str/replace #"\n" "")
-    (str/replace #"\." "")
-    count) ;=>633
-
-(-> (slurp "./resources/day15/input.txt")
-    (str/split #"\n")
-    count);=>32 lines
-
-(-> (slurp "./resources/day15/input.txt")
-    (str/split #"\n")
-    first
-    count);=>32 columns
-
-;;;some benchmarks
-
-(defn matrix-view-lookup-benchmark
-  [size iterations]
-  (let [choices (for [x (repeatedly iterations #(rand-int size))
-                      y (repeatedly iterations #(rand-int size))]
-                  [x y])
-        matrix (mrand/sample-rand-int [size size] 100)]
-    (time (println (count (map (partial apply (partial m/select-view matrix)) choices))))))
-
-;(matrix-view-lookup-benchmark 32 100)
-;;"Elapsed time: 145.14599 msecs"
-;(matrix-view-lookup-benchmark 32 300)
-;;"Elapsed time: 1113.584885 msecs"
-;(matrix-view-lookup-benchmark 32 1000)
-;;"Elapsed time: 7213.510214 msecs"
-;(matrix-view-lookup-benchmark 32 3000)
-;;"Elapsed time: 60589.148434 msecs"
-
-
-(defn matrix-lookup-benchmark
-  [size iterations]
-  (let [choices (for [x (repeatedly iterations #(rand-int size))
-                      y (repeatedly iterations #(rand-int size))]
-                  [x y])
-        matrix (mrand/sample-rand-int [size size] 100)]
-    (time (println (count (map (partial apply (partial m/select matrix)) choices))))))
-
-
-;(matrix-lookup-benchmark 32 100)
-;;"Elapsed time: 73.496681 msecs"
-;(matrix-lookup-benchmark 32 300)
-;;"Elapsed time: 597.438547 msecs"
-;(matrix-lookup-benchmark 32 1000)
-;;"Elapsed time: 6706.325098 msecs"
-;(matrix-lookup-benchmark 32 3000)
-;;;"Elapsed time: 67559.543497 msecs"
-
-
-(defn set-lookup-benchmark
-  [size set-size iterations]
-  (let [choices (for [x (repeatedly iterations #(rand-int size))
-                      y (repeatedly iterations #(rand-int size))]
-                  [x y])
-        test-set (set (for [x (repeatedly set-size #(rand-int size))
-                            y (repeatedly set-size #(rand-int size))]
-                        [x y]))]
-    (time (println (count (map test-set choices))))))
-
-;(set-lookup-benchmark 32 633 100)
-;;"Elapsed time: 18.753075 msecs"
-;(set-lookup-benchmark 32 633 300)
-;;"Elapsed time: 144.048917 msecs"
-;(set-lookup-benchmark 32 633 1000)
-;;"Elapsed time: 1610.297279 msecs"
-;(set-lookup-benchmark 32 633 3000)
-;;"Elapsed time: 14895.495903 msecs"
-
-
-(defn get-in-lookup-benchmark
-  [size iterations]
-  (let [choices (for [x (repeatedly iterations #(rand-int size))
-                      y (repeatedly iterations #(rand-int size))]
-                  [x y])
-        matrix (mrand/sample-rand-int [size size] 100)]
-    (time (println (count (map (partial get-in matrix) choices))))))
-  
-
-;(get-in-lookup-benchmark 32 100)
-;;"Elapsed time: 18.192407 msecs"
-;(get-in-lookup-benchmark 32 300)
-;;"Elapsed time: 115.556845 msecs"
-;(get-in-lookup-benchmark 32 1000)
-;;"Elapsed time: 1266.728193 msecs"
-;(get-in-lookup-benchmark 32 3000)
-;;"Elapsed time: 11488.919592 msecs"
-
-
-(defn nth-lookup-benchmark
-  [size iterations]
-  (let [choices (for [x (repeatedly iterations #(rand-int size))
-                      y (repeatedly iterations #(rand-int size))]
-                  [x y])
-        matrix (range (* size size))]
-    (time (println (count (map #(nth matrix (apply * %)) choices))))))
-
-
-;(nth-lookup-benchmark 32 100)
-;;"Elapsed time: 126.334824 msecs"
-;(nth-lookup-benchmark 32 300)
-;;"Elapsed time: 832.037978 msecs"
-;(nth-lookup-benchmark 32 1000)
-;;"Elapsed time: 5635.350586 msecs"
-;(nth-lookup-benchmark 32 3000)
-;;""Elapsed time: 47801.094126 msecs"
 
 
 (defn parse-data
@@ -139,7 +28,7 @@
 ;(println (parse-world "./resources/day15/input.txt"))
 
 
-(def world
+#_(def world1
   [[:wall :wall :wall :wall :wall]
    [:wall :empty [:elf 200] [:goblin 199] :wall]
    [:wall :empty [:elf 194] :empty :wall]
@@ -148,9 +37,17 @@
    [:wall :wall :wall :wall :wall]])
 
 
-(def world2
+#_(def world2
   [[:wall :wall :wall :wall :wall]
    [:wall :empty :empty :empty :wall]
+   [:wall :empty :empty :empty :wall]
+   [:wall :empty :empty :empty :wall]
+   [:wall [:goblin 200] :empty :empty :wall]
+   [:wall :wall :wall :wall :wall]])
+
+#_(def world3
+  [[:wall :wall :wall :wall :wall]
+   [:wall [:elf 200] :empty :empty :wall]
    [:wall :empty :empty :empty :wall]
    [:wall :empty :empty :empty :wall]
    [:wall [:goblin 200] :empty :empty :wall]
@@ -167,24 +64,31 @@
        (partition 2)
        (filter (comp sequential? second))))
 
-;(get-creatures world)
+;(first (get-creatures world))
+;(apply hash-map (first (get-creatures world)))
 
 
-(defn find-target
-  "Searches around recursively for target squares.
-  When it finds closest targets, it selects the first one in reading order.
-  When there are multiple paths to this target, it selects
-  the square that's first in reading order as first step."
-  [creature world])
+(defn enemies?
+  [creature-one-type creature-two-type]
+  (or (and (= creature-one-type :elf)(= creature-two-type :goblin))
+      (and (= creature-two-type :elf)(= creature-one-type :goblin))))
+    
+
+(defn surrounding-pos
+  [position]
+  (let [surroundings [[-1 0] [0 -1] [0 1] [1 0]]]
+    (mapv (partial m/add position) surroundings)))
 
 
-(defn move-creature
-  [creatures world target]
-  (let [[initial-position creature] (first creatures)]
-    [(conj (rest creatures) '(target creature))
-     (-> world
-         (assoc-in initial-position :empty)
-         (assoc-in target creature))]))
+;(surrounding-pos [1 1])
+
+(defn surrounding-enemy?
+  [creature world]
+  (let [surroundings (surrounding-pos (first creature))]
+    (->> (surrounding-pos (first creature))
+         (map (partial get-in world))
+         (some (partial enemies? creature)))))
+
 
 (defn print-world
   [world]
@@ -200,10 +104,86 @@
            (map #(str/join %))
            (str/join "\n"))))))
 
-;(def world (parse-world "./resources/day15/input.txt"))
-;(def creatures (get-creatures world))
-;(print-world world)
-;(print-world (second (move-creature creatures world [2 20])))
+
+(defn step-front
+  "Extends the front one step further in reading order.
+  Propagates first-step direction.
+  Needs to keep an actualized set of seen
+  Returns new front (as sorted-map) and new seen (set)"
+  [seen front world creature-type]
+  (println (str "front:" front))
+  (println (str "seen:" seen))
+  (loop [f front
+         new-front (sorted-map)
+         s seen]
+    (if (seq f)
+      (let [first-step (second (first f))
+            to-explore (-> (first f)
+                           first
+                           surrounding-pos
+                           set
+                           (clojure.set/difference s))
+            explored (some->> (interleave to-explore (map #(get-in world %) to-explore))
+                              (partition 2)
+                              (remove #(= (second %) :wall))
+                              (map (fn [[position in-map]] (if (sequential? in-map)
+                                                           (when (enemies? (first in-map) creature-type)
+                                                             [position [first-step (first in-map)]])
+                                                           [position first-step])))
+                              (println)
+                              #_(apply sorted-map)
+                              )]
+        (println (str "to-expl:" to-explore))
+        (println (str "explored:" explored))
+        (recur (rest f)
+               new-front
+               (clojure.set/union s to-explore)))
+      [new-front seen])))
+
+
+(defn remove-walls-from-front
+  [world front]
+  (println (str "blah: " front))
+  (print-world world)
+  (remove #(= :wall (get-in world (first %))) front))
+
+  
+
+(defn find-target
+  "Searches around recursively for target squares
+  When it finds closest targets, it selects the first one in reading order.
+  When there are multiple paths to this target, it selects
+  the square that's first in reading order as first step."
+  [creature world]
+  (loop [front (-> (surrounding-pos (first creature))
+                   (interleave [:up :left :right :down])
+                   (->> (partition 2)
+                        (remove-walls-from-front world)
+                        (mapcat identity)
+                        (apply sorted-map)
+                        ))
+
+         seen (conj (set (keys front)) (first creature))]
+    (let [[new-front new-seen] (step-front seen front world (first creature))]
+      (when (not (empty? new-front))
+        (if-let [toward-enemy (->> new-front
+                                   (map second)
+                                   (some sequential?) ;enemy in front := {[i j] [:first-step :enemy]}
+                                   first)]
+          (first toward-enemy)
+          (recur new-front
+                 new-seen))))))
+  
+
+
+(defn move-creature
+  [creatures world target]
+  (let [[initial-position creature] (first creatures)]
+    [(conj (rest creatures) '(target creature))
+     (-> world
+         (assoc-in initial-position :empty)
+         (assoc-in target creature))]))
+
 
 
 (defn goto-target
@@ -214,14 +194,6 @@
   (if-let [target (find-target (first creatures) world)]
     (move-creature creatures world target)
     [creatures world]))
-  
-
-(defn surrounding-pos
-  [position]
-  (let [surroundings [[-1 0] [0 -1] [0 1] [1 0]]]
-    (mapv (partial m/add position) surroundings)))
-
-;(surrounding-pos [1 1])
 
 
 (defn update-creatures
@@ -232,6 +204,7 @@
                 creature))
             creatures)
        (filter #(> (second (second %)) 0))))
+
 
 (defn update-world
   [world updated-creature]
@@ -259,11 +232,6 @@
             updated-enemy [enemy-position [enemy-type enemy-hp]]]
         [(update-creatures creatures updated-enemy) (update-world world updated-enemy)]))))
 
-;(def creatures (get-creatures world))
-;(first creatures)
-;(not (empty? (hit creatures world)))
-;(println (hit! creatures world))
-
 
 (defn step
   [world]
@@ -271,7 +239,9 @@
     (loop [c creatures
            w world]
       (if (seq c)
-        (let [[current-c current-w] (goto-target c w)]
+        (let [[current-c current-w] (if (surrounding-enemy? (first c) w)
+                                      [c w]
+                                      (goto-target c w))]
           (if-let [[new-c new-w] (hit current-c current-w)]
             (recur (rest new-c)
                    new-w)
@@ -290,9 +260,6 @@
        (count)
        (< 1)))
 
-(game-on? world)
-(game-on? world2)
-  
 
 (defn score
   [world n-rounds]
@@ -303,7 +270,6 @@
           (map second)
           (apply +))))
 
-;(score world 3)
      
 
 (defn part1
@@ -312,11 +278,7 @@
         rounds (take-while game-on? (iterate step world))]
     (score (last rounds) (dec (count rounds)))))
 
-(sorted-map [1 2] 200 [0 1] 200 [3 4] 100 [0 0] 400)
+(step (parse-world "./resources/day15/example1.txt"))
 
-(apply sorted-map (mapcat identity {[1 2] 200 [0 1] 200 [3 4] 100 [0 0] 400}))
-
-
-         
-
+;(part1 "./resources/day15/input.txt")
 
