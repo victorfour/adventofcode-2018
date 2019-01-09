@@ -4,8 +4,6 @@
             [clojure.core.matrix.random :as mrand]))
 
 
-
-
 (defn parse-data
   [filename]
   (-> (slurp filename)
@@ -68,26 +66,32 @@
 ;(apply hash-map (first (get-creatures world)))
 
 
-(defn enemies?
-  [creature-one-type creature-two-type]
-  (or (and (= creature-one-type :elf)(= creature-two-type :goblin))
-      (and (= creature-two-type :elf)(= creature-one-type :goblin))))
+(defn enemy-types?
+  [creature-type-one creature-type-two]
+  (or (and (= creature-type-one :elf) (= creature-type-two :goblin))
+      (and (= creature-type-two :elf) (= creature-type-one :goblin))))
     
 
 (defn surrounding-pos
   [position]
   (let [surroundings [[-1 0] [0 -1] [0 1] [1 0]]]
-    (mapv (partial m/add position) surroundings)))
+    (map (partial m/add position) surroundings)))
 
 
 ;(surrounding-pos [1 1])
 
 (defn surrounding-enemy?
-  [creature world]
-  (let [surroundings (surrounding-pos (first creature))]
-    (->> (surrounding-pos (first creature))
-         (map (partial get-in world))
-         (some (partial enemies? creature)))))
+  [creature-pos world]
+  (let [creature-type (first (get-in world creature-pos))]
+    ;(println (str "creature type: " creature-type))
+    (some->> (surrounding-pos creature-pos)
+             (map (partial get-in world))
+             (filter sequential?)
+             (map first)
+             (some (partial enemy-types? creature-type)))))
+
+;(surrounding-enemy? [1 2] (parse-world "./resources/day15/example1.txt"))
+;(surrounding-enemy? [2 4] (parse-world "./resources/day15/example1.txt"))
 
 
 (defn print-world
@@ -105,14 +109,15 @@
            (str/join "\n"))))))
 
 
+(merge (sorted-map [1 2] :three [0 1] :two [4 0] :four)  (hash-map [5 2] :five [0 0] :one))
+(merge (hash-map [1 2] :three [0 1] :two [4 0] :four)  (sorted-map [5 2] :five [0 0] :one))
+
 (defn step-front
-  "Extends the front one step further in reading order.
-  Propagates first-step direction.
-  Needs to keep an actualized set of seen
-  Returns new front (as sorted-map) and new seen (set)"
+  ;"Extends the front one step further in reading order.
+  ;Propagates first-step direction.
+  ;Needs to keep an actualized set of seen
+  ;Returns new front (as sorted-map) and new seen (set)"
   [seen front world creature-type]
-  (println (str "front:" front))
-  (println (str "seen:" seen))
   (loop [f front
          new-front (sorted-map)
          s seen]
@@ -122,131 +127,124 @@
                            first
                            surrounding-pos
                            set
-                           (clojure.set/difference s))
-            explored (some->> (interleave to-explore (map #(get-in world %) to-explore))
-                              (partition 2)
-                              (remove #(= (second %) :wall))
-                              (map (fn [[position in-map]] (if (sequential? in-map)
-                                                           (when (enemies? (first in-map) creature-type)
-                                                             [position [first-step (first in-map)]])
-                                                           [position first-step])))
-                              (println)
-                              #_(apply sorted-map)
-                              )]
-        (println (str "to-expl:" to-explore))
-        (println (str "explored:" explored))
+                           (clojure.set/difference s)
+                           seq)
+            new-seen (clojure.set/union s (set to-explore))
+            explored (some->> to-explore
+                              (remove #(= :wall (get-in world %)))
+                              (map (fn [pos] [pos (get-in world pos)]))
+                              (map (fn [[position mapval]] (if (sequential? mapval)
+                                                             (when (enemy-types? (first mapval) creature-type)
+                                                               [position [:enemy first-step]])
+                                                             [position first-step])))
+                              (mapcat identity)
+                              (apply hash-map))]
+        ;(println (str "creature-type: " creature-type))
+        ;(println (str "first-step: " first-step))
+        ;(println (str "seen:" s))
+        ;(println (str "new-seen:" new-seen))
+        ;(println (str "to-explore:" to-explore))
+        ;(println (str "explored:" explored))
         (recur (rest f)
-               new-front
-               (clojure.set/union s to-explore)))
-      [new-front seen])))
+               (merge new-front explored)
+               new-seen)
 
+        ;(println (str "explored: " (seq explored))))
+        )
 
-(defn remove-walls-from-front
-  [world front]
-  (println (str "blah: " front))
-  (print-world world)
-  (remove #(= :wall (get-in world (first %))) front))
+      [new-front s])
+    ))
+    
 
-  
 
 (defn find-target
   "Searches around recursively for target squares
   When it finds closest targets, it selects the first one in reading order.
   When there are multiple paths to this target, it selects
   the square that's first in reading order as first step."
-  [creature world]
-  (loop [front (-> (surrounding-pos (first creature))
-                   (interleave [:up :left :right :down])
-                   (->> (partition 2)
-                        (remove-walls-from-front world)
-                        (mapcat identity)
-                        (apply sorted-map)
-                        ))
-
-         seen (conj (set (keys front)) (first creature))]
-    (let [[new-front new-seen] (step-front seen front world (first creature))]
-      (when (not (empty? new-front))
-        (if-let [toward-enemy (->> new-front
-                                   (map second)
-                                   (some sequential?) ;enemy in front := {[i j] [:first-step :enemy]}
-                                   first)]
-          (first toward-enemy)
-          (recur new-front
-                 new-seen))))))
-  
+  [creature-pos world]
+  (let [first-step (surrounding-pos creature-pos)]
+    (loop [seen (conj (set first-step) creature-pos)
+           front (-> first-step
+                     (interleave first-step)
+                     (->> (partition 2)
+                          (remove #(= :wall (get-in world (first %))))
+                          (mapcat identity)
+                          (apply sorted-map)))]
+      ;(println front)
+      (let [[new-front new-seen] (step-front seen front world (first (get-in world creature-pos)))]
+        (when (seq new-front)
+          (if-let [toward-enemy (->> new-front
+                                     (filter #(= (first (second %)) :enemy))
+                                     first ;[[pos] [:enemy [first-step-pos]]]
+                                     second
+                                     second)]; sorry about that.. 
+            toward-enemy
+            (recur new-seen new-front)))))))
 
 
 (defn move-creature
-  [creatures world target]
-  (let [[initial-position creature] (first creatures)]
-    [(conj (rest creatures) '(target creature))
-     (-> world
-         (assoc-in initial-position :empty)
-         (assoc-in target creature))]))
-
+  [world creature-pos target]
+  (let [creature (get-in world creature-pos)]
+    (-> world
+        (assoc-in creature-pos :empty)
+        (assoc-in target creature))))
 
 
 (defn goto-target
   "Moves the first creature to the square that's one step closer to the closest target
   Returns a modified `creatures` and `world` with the updated position of
   the first creature, or the original ones."
-  [creatures world]
-  (if-let [target (find-target (first creatures) world)]
-    (move-creature creatures world target)
-    [creatures world]))
+  [creature-pos world]
+  (if-let [target (find-target creature-pos world)]
+    (move-creature world creature-pos target)
+    world))
+
+(print-world (parse-world "./Resources/Day15/example2.txt"))
+
+(print-world (goto-target [1 2] (parse-world "./resources/day15/example2.txt")))
 
 
-(defn update-creatures
-  [creatures updated-creature]
-  (->> (map (fn [creature]
-              (if (= (first creature) (first updated-creature))
-                updated-creature
-                creature))
-            creatures)
-       (filter #(> (second (second %)) 0))))
-
-
-(defn update-world
-  [world updated-creature]
-  (if (> (second (second updated-creature)) 0)
-    (assoc-in world (first updated-creature) (second updated-creature))
-    (assoc-in world (first updated-creature) :empty)))
-       
-  
 (defn hit
-  "Get the content of squares surrounding the first creature in reading order.
-  If one enemy is found, hit it by returning altered versions of `creatures` and `world`.
-  Otherwise, return original `creatures`and `world`"
-  [creatures world]
-  (let [self-type (first (second (first creatures)))
-        surroundings (surrounding-pos (first (first creatures)))
-        enemies (->> (map #(get-in world %) surroundings)
+  [creature-pos world]
+  (let [self-type (first (get-in world creature-pos))
+        surroundings (surrounding-pos creature-pos)
+        enemies (->> (map (partial get-in world) surroundings)
                      (interleave surroundings)
                      (partition 2)
                      (filter (comp sequential? second))
                      (filter #(not= self-type (first (second %)))))]
-    (when (seq enemies)
-      (let [enemy-position (first (first enemies))
-            enemy-type (first (second enemies))
-            enemy-hp (- (second (second enemies)) 3)
-            updated-enemy [enemy-position [enemy-type enemy-hp]]]
-        [(update-creatures creatures updated-enemy) (update-world world updated-enemy)]))))
+    (if (seq enemies)
+      (let [enemy (first enemies)
+            enemy-position (first enemy)
+            enemy-type (first (second enemy))
+            enemy-hp (- (second (second enemy)) 3)]
+        (if (<= enemy-hp 0)
+          (assoc-in world enemy-position :empty)
+          (assoc-in world enemy-position [enemy-type enemy-hp])))
+      world)))
+
+;(print-world (parse-world "./resources/day15/example1.txt"))
+
+;(sort (map first (get-creatures (parse-world "./resources/day15/example1.txt"))))
+
+;(= (hit [1 2] (parse-world "./resources/day15/example1.txt"))
+;   (parse-world "./resources/day15/example1.txt"))
+
+;(print-world (hit [2 4] (parse-world "./resources/day15/example1.txt")))
+;(hit [2 4] (parse-world "./resources/day15/example1.txt"))
 
 
 (defn step
   [world]
-  (let [creatures (get-creatures world)]
+  (let [creatures (sort (map first (get-creatures world)))]
     (loop [c creatures
            w world]
       (if (seq c)
-        (let [[current-c current-w] (if (surrounding-enemy? (first c) w)
-                                      [c w]
-                                      (goto-target c w))]
-          (if-let [[new-c new-w] (hit current-c current-w)]
-            (recur (rest new-c)
-                   new-w)
-            (recur (rest current-c)
-                   current-w)))
+        (recur (rest c)
+               (hit (first c) (if (surrounding-enemy? (first c) w)
+                                w
+                                (goto-target (first c) w))))
         w))))
 
 ;;no trapped creature in intial map
@@ -278,6 +276,7 @@
         rounds (take-while game-on? (iterate step world))]
     (score (last rounds) (dec (count rounds)))))
 
+(println "-------------------------------------------")
 (step (parse-world "./resources/day15/example1.txt"))
 
 ;(part1 "./resources/day15/input.txt")
